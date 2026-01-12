@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NBA Live Board</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <main class="container">
+      <header class="header">
+        <div>
+          <h1>NBA Live Board</h1>
+          <p>Live scores with pre-game moneyline odds.</p>
+        </div>
+        <button id="refresh">Refresh</button>
+      </header>
+
+      <section class="status" id="status">Loading games...</section>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Matchup</th>
+            <th>Score</th>
+            <th>Pregame Moneyline</th>
+          </tr>
+        </thead>
+        <tbody id="board"></tbody>
+      </table>
+    </main>
+
+    <script>
+      const statusEl = document.getElementById("status");
+      const boardEl = document.getElementById("board");
+      const refreshBtn = document.getElementById("refresh");
+
+      function formatMoneyline(value) {
+        if (value === null || value === undefined) {
+          return "N/A";
+        }
+        return value > 0 ? `+${value}` : `${value}`;
+      }
+
+      function formatScore(game) {
+        if (game.score.away === null || game.score.home === null) {
+          return `${game.score.label}`;
+        }
+        const label = game.score.label === "Live" ? "" : ` (${game.score.label})`;
+        return `${game.score.away} - ${game.score.home}${label}`;
+      }
+
+      function renderGames(games, generatedAt) {
+        boardEl.innerHTML = "";
+        if (!games.length) {
+          statusEl.textContent = "No live games available.";
+          return;
+        }
+        statusEl.textContent = `Updated ${new Date(generatedAt).toLocaleTimeString()}`;
+
+        games.forEach((game) => {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td>
+              <div class="matchup">${game.awayTeam} vs ${game.homeTeam}</div>
+              <div class="meta">${game.status}</div>
+            </td>
+            <td>${formatScore(game)}</td>
+            <td>${formatMoneyline(game.moneyline.away)} / ${formatMoneyline(game.moneyline.home)}</td>
+          `;
+          boardEl.appendChild(row);
+        });
+      }
+
+      async function loadBoard() {
+        statusEl.textContent = "Loading games...";
+        try {
+          const response = await fetch("/api/board");
+          if (!response.ok) {
+            throw new Error("Failed to load board");
+          }
+          const data = await response.json();
+          renderGames(data.games || [], data.generatedAt);
+        } catch (error) {
+          statusEl.textContent = "Could not load games right now.";
+        }
+      }
+
+      refreshBtn.addEventListener("click", loadBoard);
+      loadBoard();
+    </script>
+  </body>
+</html>
